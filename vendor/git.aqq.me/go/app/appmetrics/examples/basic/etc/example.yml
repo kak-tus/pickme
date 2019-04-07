@@ -1,0 +1,14 @@
+metrics:
+  host: "localhost"
+  port: 8125
+  metricPrefix: "example."
+  tagFormat: "inname"
+  maxPacketSize: 1432
+  flushInterval: 300
+  reconnectInterval: 0
+  retryTimeout: 5000
+  metricAliases:
+    requestTime: "request.time"
+  metricFilter:
+    requestTime: true
+  disable: false
