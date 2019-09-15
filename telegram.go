@@ -156,7 +156,7 @@ func (o *instanceObj) processMessage(msg *tgbotapi.Message) error {
 		return nil
 	}
 
-	repl := tgbotapi.NewMessage(msg.Chat.ID, "")
+	repl := tgbotapi.NewMessage(msg.Chat.ID, "pickme")
 
 	// SliceTricks
 	batchSize := maxButtons
