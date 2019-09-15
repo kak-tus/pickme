@@ -14,7 +14,6 @@ type stored struct {
 	doneIdx map[int]bool
 	Items   []string
 	Names   []string
-	Title   string
 	uniq    string
 }
 

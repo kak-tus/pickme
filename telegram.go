@@ -148,15 +148,15 @@ func (o *instanceObj) processMessage(msg *tgbotapi.Message) error {
 		}
 	}
 
-	_, text, items := parseMsg(msg.Text)
-
-	repl := tgbotapi.NewMessage(msg.Chat.ID, text)
+	_, items := parseMsg(msg.Text)
 
 	// Hacky detection of message from self thru user
 	// If no items found
 	if len(items) == 0 {
 		return nil
 	}
+
+	repl := tgbotapi.NewMessage(msg.Chat.ID, "")
 
 	// SliceTricks
 	batchSize := maxButtons
@@ -168,7 +168,7 @@ func (o *instanceObj) processMessage(msg *tgbotapi.Message) error {
 	batches = append(batches, items)
 
 	for _, b := range batches {
-		kb, err := o.formAndStoreKB(stored{Items: b, Title: text})
+		kb, err := o.formAndStoreKB(stored{Items: b})
 		if err != nil {
 			return err
 		}
@@ -185,19 +185,18 @@ func (o *instanceObj) processMessage(msg *tgbotapi.Message) error {
 }
 
 func (o *instanceObj) processInline(msg *tgbotapi.InlineQuery) error {
-	subj, text, items := parseMsg(msg.Query)
+	subj, items := parseMsg(msg.Query)
 
 	// Telegram API limits
 	if len(msg.Query) >= 255 || len(items) > maxButtons {
 		subj = "Limit reached. Send me direct message."
-		text = "Limit reached. Send me direct message."
 		items = []string{}
 	}
 
-	repl := tgbotapi.NewInlineQueryResultArticle("0", subj, text)
+	repl := tgbotapi.NewInlineQueryResultArticle("0", subj, subj)
 
 	if len(items) != 0 {
-		kb, err := o.formAndStoreKB(stored{Items: items, Title: text})
+		kb, err := o.formAndStoreKB(stored{Items: items})
 		if err != nil {
 			return err
 		}
@@ -247,7 +246,6 @@ func (o *instanceObj) processCallback(msg *tgbotapi.CallbackQuery) error {
 	}
 
 	done := make([]string, 0)
-	done = append(done, st.Title)
 
 	for i, v := range st.Done {
 		done = append(done, fmt.Sprintf("%s (%s)", st.Items[v], st.Names[i]))

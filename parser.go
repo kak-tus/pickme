@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-func parseMsg(msg string) (string, string, []string) {
+func parseMsg(msg string) (string, []string) {
 	items := make([]string, 0)
 
 	rows := strings.Split(msg, "\n")
@@ -24,17 +24,11 @@ func parseMsg(msg string) (string, string, []string) {
 		}
 	}
 
-	title := "Shopping list or TODO list"
-	if len(items) != 0 {
-		title = items[0]
-		items = items[1:]
-	}
-
 	if len(items) == 0 {
-		return "Send", title, items
+		return "Send", items
 	}
 
 	send := fmt.Sprintf("Send (%s)", strings.Join(items, ","))
 
-	return send, title, items
+	return send, items
 }
