@@ -228,6 +228,8 @@ func (o *instanceObj) processCallback(msg *tgbotapi.CallbackQuery) error {
 
 	uniq := keys[0]
 
+	println(msg.Data, uniq)
+
 	st, err := o.get(uniq)
 	if err != nil {
 		return err
