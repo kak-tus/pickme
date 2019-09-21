@@ -1,30 +1,41 @@
 package main
 
 import (
-	"git.aqq.me/go/app/appconf"
-	"git.aqq.me/go/app/launcher"
-	"github.com/iph0/conf/envconf"
-	"github.com/iph0/conf/fileconf"
+	"os"
+	"os/signal"
+	"syscall"
+
+	"go.uber.org/zap"
 )
 
-func init() {
-	fileLdr := fileconf.NewLoader("etc", "/etc")
-	envLdr := envconf.NewLoader()
-
-	appconf.RegisterLoader("file", fileLdr)
-	appconf.RegisterLoader("env", envLdr)
-
-	appconf.Require("file:pickme.yml")
-	appconf.Require("env:^PICKME_")
-}
-
 func main() {
-	launcher.Run(func() error {
-		err := inst.Start()
-		if err != nil {
-			return err
-		}
+	logger, err := zap.NewProduction()
+	if err != nil {
+		panic(err)
+	}
 
-		return nil
-	})
+	log := logger.Sugar()
+
+	tg, err := newTg()
+	if err != nil {
+		log.Panic(err)
+	}
+
+	go func() {
+		if err := tg.start(); err != nil {
+			log.Panic(err)
+		}
+	}()
+
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+	_ = <-sigs
+	log.Info("Stop")
+
+	if err := tg.stop(); err != nil {
+		log.Panic(err)
+	}
+
+	_ = log.Sync()
 }

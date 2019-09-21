@@ -10,10 +10,10 @@ import (
 )
 
 type tgConf struct {
-	Token string
-	URL   string
 	Path  string
 	Proxy string
+	Token string
+	URL   string
 }
 
 type instanceConf struct {
@@ -24,7 +24,7 @@ type instanceConf struct {
 
 type instanceObj struct {
 	bot *tgbotapi.BotAPI
-	cnf instanceConf
+	cnf *instanceConf
 	enc jsoniter.API
 	log *zap.SugaredLogger
 	rdb *redis.ClusterClient

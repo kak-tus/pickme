@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
-	"github.com/zach-klippenstein/goregen"
+	regen "github.com/zach-klippenstein/goregen"
 )
 
 func (o *instanceObj) formAndStoreKB(st stored) (*tgbotapi.InlineKeyboardMarkup, error) {

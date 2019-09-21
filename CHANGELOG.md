@@ -1,3 +1,6 @@
+2019-09-22 v0.1.3
+  - Normal go mod work.
+
 2019-09-15 v0.1.2
   - Updated environment.
   - Remove required title from messages.

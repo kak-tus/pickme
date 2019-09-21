@@ -6,96 +6,80 @@ import (
 	"strings"
 	"time"
 
-	"git.aqq.me/go/app/appconf"
-	"git.aqq.me/go/app/applog"
-	"git.aqq.me/go/app/event"
 	"github.com/go-redis/redis"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
-	"github.com/iph0/conf"
 	jsoniter "github.com/json-iterator/go"
+	"go.uber.org/zap"
 	"golang.org/x/net/proxy"
 )
-
-var inst *instanceObj
 
 // Count of buttons is limited by telegram API or client
 const maxButtons = 100
 
-func init() {
-	event.Init.AddHandler(
-		func() error {
-			cnfMap := appconf.GetConfig()["pickme"]
+func newTg() (*instanceObj, error) {
+	cnf, err := newConf()
+	if err != nil {
+		return nil, err
+	}
 
-			var cnf instanceConf
-			err := conf.Decode(cnfMap, &cnf)
-			if err != nil {
-				return err
-			}
+	addrs := strings.Split(cnf.RedisAddrs, ",")
 
-			addrs := strings.Split(cnf.RedisAddrs, ",")
+	ropt := &redis.ClusterOptions{
+		Addrs:        addrs,
+		ReadTimeout:  time.Minute,
+		WriteTimeout: time.Minute,
+	}
 
-			ropt := &redis.ClusterOptions{
-				Addrs:        addrs,
-				ReadTimeout:  time.Minute,
-				WriteTimeout: time.Minute,
-			}
+	rdb := redis.NewClusterClient(ropt)
 
-			rdb := redis.NewClusterClient(ropt)
+	logger, err := zap.NewProduction()
+	if err != nil {
+		return nil, err
+	}
 
-			log := applog.GetLogger().Sugar()
+	log := logger.Sugar()
 
-			httpTransport := &http.Transport{}
+	httpTransport := &http.Transport{}
 
-			if cnf.Telegram.Proxy != "" {
-				dialer, err := proxy.SOCKS5("tcp", cnf.Telegram.Proxy, nil, proxy.Direct)
-				if err != nil {
-					return err
-				}
+	if cnf.Telegram.Proxy != "" {
+		dialer, err := proxy.SOCKS5("tcp", cnf.Telegram.Proxy, nil, proxy.Direct)
+		if err != nil {
+			return nil, err
+		}
 
-				httpTransport.Dial = dialer.Dial
-			}
+		httpTransport.Dial = dialer.Dial
+	}
 
-			httpClient := &http.Client{Transport: httpTransport, Timeout: time.Minute}
+	httpClient := &http.Client{Transport: httpTransport, Timeout: time.Minute}
 
-			bot, err := tgbotapi.NewBotAPIWithClient(cnf.Telegram.Token, httpClient)
-			if err != nil {
-				return err
-			}
+	bot, err := tgbotapi.NewBotAPIWithClient(cnf.Telegram.Token, httpClient)
+	if err != nil {
+		return nil, err
+	}
 
-			srv := &http.Server{Addr: cnf.Listen}
+	srv := &http.Server{Addr: cnf.Listen}
 
-			inst = &instanceObj{
-				bot: bot,
-				cnf: cnf,
-				enc: jsoniter.Config{UseNumber: true}.Froze(),
-				log: log,
-				rdb: rdb,
-				srv: srv,
-			}
+	enc := jsoniter.Config{UseNumber: true}.Froze()
 
-			return nil
-		},
-	)
+	inst := &instanceObj{
+		bot: bot,
+		cnf: cnf,
+		enc: enc,
+		log: log,
+		rdb: rdb,
+		srv: srv,
+	}
 
-	event.Stop.AddHandler(
-		func() error {
-			err := inst.srv.Shutdown(nil)
-			if err != nil {
-				return err
-			}
-
-			return nil
-		},
-	)
+	return inst, nil
 }
 
-func (o *instanceObj) Start() error {
+func (o *instanceObj) start() error {
 	res, err := o.bot.SetWebhook(tgbotapi.NewWebhook(o.cnf.Telegram.URL + o.cnf.Telegram.Path))
 	if err != nil {
 		return err
 	}
 
-	o.log.Debug(res.Description)
+	o.log.Info(res.Description)
 
 	updates := o.bot.ListenForWebhook("/" + o.cnf.Telegram.Path)
 
@@ -104,24 +88,31 @@ func (o *instanceObj) Start() error {
 	})
 
 	go func() {
-		err := o.srv.ListenAndServe()
-		if err != nil && err != http.ErrServerClosed {
-			o.log.Panic(err)
-		}
-	}()
-
-	go func() {
 		for {
 			msg := <-updates
 
 			go func() {
-				err := o.process(msg)
-				if err != nil {
+				if err := o.process(msg); err != nil {
 					o.log.Error(err)
 				}
 			}()
 		}
 	}()
+
+	err = o.srv.ListenAndServe()
+	if err != nil && err != http.ErrServerClosed {
+		return err
+	}
+
+	return nil
+}
+
+func (o *instanceObj) stop() error {
+	_ = o.log.Sync()
+
+	if err := o.srv.Shutdown(nil); err != nil {
+		return err
+	}
 
 	return nil
 }
