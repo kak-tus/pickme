@@ -1,9 +1,0 @@
----
-log:
-  tag: "example"
-  level: "debug"
-  output: "stdsep"
-  format: "console"
-  formatConfig:
-    colors: true
-    disableTimestamp: true
