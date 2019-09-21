@@ -4,20 +4,13 @@ import (
 	"fmt"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
-	regen "github.com/zach-klippenstein/goregen"
 )
 
 func (o *instanceObj) formAndStoreKB(st stored) (*tgbotapi.InlineKeyboardMarkup, error) {
 	uniq := st.uniq
 
 	if uniq == "" {
-		var err error
-
-		// 64 bytes limit, so 58 + 1 (_) + 2 (0..99) + reserve
-		uniq, err = regen.Generate("[A-Za-z0-9]{58}")
-		if err != nil {
-			return nil, err
-		}
+		uniq = o.gen.Generate()
 
 		st.uniq = uniq
 	}

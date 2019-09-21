@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"net/http"
 	"strings"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/go-redis/redis"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	jsoniter "github.com/json-iterator/go"
+	regen "github.com/zach-klippenstein/goregen"
 	"go.uber.org/zap"
 	"golang.org/x/net/proxy"
 )
@@ -61,10 +63,21 @@ func newTg() (*instanceObj, error) {
 
 	enc := jsoniter.Config{UseNumber: true}.Froze()
 
+	arg := &regen.GeneratorArgs{
+		RngSource: rand.NewSource(time.Now().UnixNano()),
+	}
+
+	// 64 bytes limit, so 58 + 1 (_) + 2 (0..99) + reserve
+	gen, err := regen.NewGenerator("[A-Za-z0-9]{58}", arg)
+	if err != nil {
+		return nil, err
+	}
+
 	inst := &instanceObj{
 		bot: bot,
 		cnf: cnf,
 		enc: enc,
+		gen: gen,
 		log: log,
 		rdb: rdb,
 		srv: srv,
@@ -218,8 +231,6 @@ func (o *instanceObj) processCallback(msg *tgbotapi.CallbackQuery) error {
 	}
 
 	uniq := keys[0]
-
-	println(msg.Data, uniq)
 
 	st, err := o.get(uniq)
 	if err != nil {
