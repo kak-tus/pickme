@@ -1,15 +1,14 @@
-FROM golang:1.13.0-alpine3.10 AS build
+FROM golang:1.17.5-alpine3.15 AS build
 
 WORKDIR /go/pickme
 
 COPY *.go ./
 COPY go.mod .
 COPY go.sum .
-COPY vendor ./vendor
 
-RUN go build -mod=vendor -o /go/bin/pickme
+RUN go build -o /go/bin/pickme
 
-FROM alpine:3.10
+FROM alpine:3.15
 
 COPY --from=build /go/bin/pickme /usr/local/bin/pickme
 COPY etc /etc/

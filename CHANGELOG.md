@@ -1,3 +1,6 @@
+Unreleased
+  - Remove vendoring.
+
 2019-09-22 v0.1.4
   - Bugfix with generating identical ids for different lists.
 
