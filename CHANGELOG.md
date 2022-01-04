@@ -1,6 +1,8 @@
-2022-01-05 v0.2.0
+2022-01-04 v0.2.1, v0.2.2
+  - Test build and publish on github container registry.
+
+2022-01-04 v0.2.0
   - Use all latest libraries.
-  - Build and publish on github container registry.
 
 2022-01-04 v0.1.5
   - Remove vendoring.
