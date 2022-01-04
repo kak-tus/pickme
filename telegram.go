@@ -19,7 +19,9 @@ import (
 )
 
 // Count of buttons is limited by telegram API or client
-const maxButtons = 100
+// Correct limit is unknown
+// May be it limited by message size, not by buttons count?
+const maxButtons = 50
 
 func newTg() (*instanceObj, error) {
 	cnf, err := newConf()
