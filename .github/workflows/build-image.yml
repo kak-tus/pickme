@@ -2,7 +2,6 @@ name: Build image
 
 on:
   push:
-    branches: [ master ]
     tags: [ 'v*.*.*' ]
 
 env:
@@ -40,4 +39,7 @@ jobs:
           version: v0.9.3
 
       - name: Build
-        run: ko publish --tags $BUILD_TAG ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        run: |
+          env
+          export KO_DOCKER_REPO="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          ko publish --tags $BUILD_TAG .
