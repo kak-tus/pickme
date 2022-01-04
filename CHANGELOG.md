@@ -1,3 +1,6 @@
+2022-01-05 v0.2.0
+  - Use all latest libraries.
+
 2022-01-04 v0.1.5
   - Remove vendoring.
   - Switch to full env config.

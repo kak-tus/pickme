@@ -1,12 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-func (o *instanceObj) formAndStoreKB(st stored) (*tgbotapi.InlineKeyboardMarkup, error) {
+func (o *instanceObj) formAndStoreKB(ctx context.Context, st stored) (*tgbotapi.InlineKeyboardMarkup, error) {
 	uniq := st.uniq
 
 	if uniq == "" {
@@ -40,7 +41,7 @@ func (o *instanceObj) formAndStoreKB(st stored) (*tgbotapi.InlineKeyboardMarkup,
 
 	kb := tgbotapi.NewInlineKeyboardMarkup(btns...)
 
-	err := o.store(st)
+	err := o.store(ctx, st)
 	if err != nil {
 		return nil, err
 	}

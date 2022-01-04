@@ -3,8 +3,8 @@ package main
 import (
 	"net/http"
 
-	"github.com/go-redis/redis"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
+	"github.com/go-redis/redis/v8"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	jsoniter "github.com/json-iterator/go"
 	regen "github.com/zach-klippenstein/goregen"
 	"go.uber.org/zap"

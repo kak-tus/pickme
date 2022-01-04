@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-redis/redis"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
+	"github.com/go-redis/redis/v8"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	jsoniter "github.com/json-iterator/go"
 	regen "github.com/zach-klippenstein/goregen"
 	"go.uber.org/zap"
@@ -51,7 +51,7 @@ func newTg() (*instanceObj, error) {
 		return nil, err
 	}
 
-	bot, err := tgbotapi.NewBotAPIWithClient(cnf.Telegram.Token, httpClient)
+	bot, err := tgbotapi.NewBotAPIWithClient(cnf.Telegram.Token, tgbotapi.APIEndpoint, httpClient)
 	if err != nil {
 		return nil, err
 	}
@@ -120,12 +120,17 @@ func getClient(cnf *instanceConf) (*http.Client, error) {
 }
 
 func (o *instanceObj) start() error {
-	res, err := o.bot.SetWebhook(tgbotapi.NewWebhook(o.cnf.Telegram.URL + o.cnf.Telegram.Path))
+	webhookCnf, err := tgbotapi.NewWebhook(o.cnf.Telegram.URL + o.cnf.Telegram.Path)
 	if err != nil {
 		return err
 	}
 
-	o.log.Info(res.Description)
+	resp, err := o.bot.Request(webhookCnf)
+	if err != nil {
+		return err
+	}
+
+	o.log.Info(resp.Description)
 
 	updates := o.bot.ListenForWebhook("/" + o.cnf.Telegram.Path)
 
@@ -138,9 +143,13 @@ func (o *instanceObj) start() error {
 			msg := <-updates
 
 			go func() {
-				if err := o.process(msg); err != nil {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+
+				if err := o.process(ctx, msg); err != nil {
 					o.log.Error(err)
 				}
+
+				cancel()
 			}()
 		}
 	}()
@@ -163,20 +172,20 @@ func (o *instanceObj) stop() error {
 	return nil
 }
 
-func (o *instanceObj) process(msg tgbotapi.Update) error {
+func (o *instanceObj) process(ctx context.Context, msg tgbotapi.Update) error {
 	switch {
 	case msg.Message != nil:
-		return o.processMessage(msg.Message)
+		return o.processMessage(ctx, msg.Message)
 	case msg.InlineQuery != nil:
-		return o.processInline(msg.InlineQuery)
+		return o.processInline(ctx, msg.InlineQuery)
 	case msg.CallbackQuery != nil:
-		return o.processCallback(msg.CallbackQuery)
+		return o.processCallback(ctx, msg.CallbackQuery)
 	}
 
 	return nil
 }
 
-func (o *instanceObj) processMessage(msg *tgbotapi.Message) error {
+func (o *instanceObj) processMessage(ctx context.Context, msg *tgbotapi.Message) error {
 	if msg.Command() == "start" {
 		repl := tgbotapi.NewMessage(
 			msg.Chat.ID,
@@ -211,7 +220,7 @@ func (o *instanceObj) processMessage(msg *tgbotapi.Message) error {
 	batches = append(batches, items)
 
 	for _, b := range batches {
-		kb, err := o.formAndStoreKB(stored{Items: b})
+		kb, err := o.formAndStoreKB(ctx, stored{Items: b})
 		if err != nil {
 			return err
 		}
@@ -227,7 +236,7 @@ func (o *instanceObj) processMessage(msg *tgbotapi.Message) error {
 	return nil
 }
 
-func (o *instanceObj) processInline(msg *tgbotapi.InlineQuery) error {
+func (o *instanceObj) processInline(ctx context.Context, msg *tgbotapi.InlineQuery) error {
 	subj, items := parseMsg(msg.Query)
 
 	// Telegram API limits
@@ -239,7 +248,7 @@ func (o *instanceObj) processInline(msg *tgbotapi.InlineQuery) error {
 	repl := tgbotapi.NewInlineQueryResultArticle("0", subj, subj)
 
 	if len(items) != 0 {
-		kb, err := o.formAndStoreKB(stored{Items: items})
+		kb, err := o.formAndStoreKB(ctx, stored{Items: items})
 		if err != nil {
 			return err
 		}
@@ -247,7 +256,7 @@ func (o *instanceObj) processInline(msg *tgbotapi.InlineQuery) error {
 		repl.ReplyMarkup = kb
 	}
 
-	_, err := o.bot.AnswerInlineQuery(tgbotapi.InlineConfig{
+	_, err := o.bot.Send(tgbotapi.InlineConfig{
 		InlineQueryID: msg.ID,
 		IsPersonal:    true,
 		Results:       []interface{}{repl},
@@ -259,7 +268,7 @@ func (o *instanceObj) processInline(msg *tgbotapi.InlineQuery) error {
 	return nil
 }
 
-func (o *instanceObj) processCallback(msg *tgbotapi.CallbackQuery) error {
+func (o *instanceObj) processCallback(ctx context.Context, msg *tgbotapi.CallbackQuery) error {
 	if msg.Data == "" {
 		return nil
 	}
@@ -271,7 +280,7 @@ func (o *instanceObj) processCallback(msg *tgbotapi.CallbackQuery) error {
 
 	uniq := keys[0]
 
-	st, err := o.get(uniq)
+	st, err := o.get(ctx, uniq)
 	if err != nil {
 		return err
 	}
@@ -330,7 +339,7 @@ func (o *instanceObj) processCallback(msg *tgbotapi.CallbackQuery) error {
 		repl.InlineMessageID = msg.InlineMessageID
 	}
 
-	kb, err := o.formAndStoreKB(*st)
+	kb, err := o.formAndStoreKB(ctx, *st)
 	if err != nil {
 		return err
 	}

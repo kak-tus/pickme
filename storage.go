@@ -1,10 +1,11 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"time"
 
-	"github.com/go-redis/redis"
+	"github.com/go-redis/redis/v8"
 )
 
 const key = "pickme{%s}"
@@ -17,7 +18,7 @@ type stored struct {
 	uniq    string
 }
 
-func (o *instanceObj) store(value stored) error {
+func (o *instanceObj) store(ctx context.Context, value stored) error {
 	enc, err := o.enc.MarshalToString(value)
 	if err != nil {
 		return err
@@ -25,7 +26,7 @@ func (o *instanceObj) store(value stored) error {
 
 	k := fmt.Sprintf(key, value.uniq)
 
-	_, err = o.rdb.Set(k, enc, time.Hour*24*7).Result()
+	_, err = o.rdb.Set(ctx, k, enc, time.Hour*24*7).Result()
 	if err != nil && err != redis.Nil {
 		return err
 	}
@@ -33,10 +34,10 @@ func (o *instanceObj) store(value stored) error {
 	return nil
 }
 
-func (o *instanceObj) get(id string) (*stored, error) {
+func (o *instanceObj) get(ctx context.Context, id string) (*stored, error) {
 	k := fmt.Sprintf(key, id)
 
-	res, err := o.rdb.Get(k).Result()
+	res, err := o.rdb.Get(ctx, k).Result()
 	if err != nil && err != redis.Nil {
 		return nil, err
 	}
