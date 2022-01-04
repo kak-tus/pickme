@@ -30,7 +30,8 @@ func main() {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
-	_ = <-sigs
+	<-sigs
+
 	log.Info("Stop")
 
 	if err := tg.stop(); err != nil {

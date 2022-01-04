@@ -30,7 +30,7 @@ func (o *instanceObj) formAndStoreKB(st stored) (*tgbotapi.InlineKeyboardMarkup,
 		id := fmt.Sprintf("%s_%d", uniq, i)
 
 		btns[pos] = []tgbotapi.InlineKeyboardButton{
-			tgbotapi.InlineKeyboardButton{
+			{
 				CallbackData: &id,
 				Text:         v,
 			},

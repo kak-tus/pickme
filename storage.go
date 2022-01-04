@@ -46,6 +46,7 @@ func (o *instanceObj) get(id string) (*stored, error) {
 	}
 
 	st := stored{}
+
 	err = o.enc.UnmarshalFromString(res, &st)
 	if err != nil {
 		return nil, err

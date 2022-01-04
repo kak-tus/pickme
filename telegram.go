@@ -1,8 +1,11 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"math/rand"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -41,18 +44,10 @@ func newTg() (*instanceObj, error) {
 
 	log := logger.Sugar()
 
-	httpTransport := &http.Transport{}
-
-	if cnf.Telegram.Proxy != "" {
-		dialer, err := proxy.SOCKS5("tcp", cnf.Telegram.Proxy, nil, proxy.Direct)
-		if err != nil {
-			return nil, err
-		}
-
-		httpTransport.Dial = dialer.Dial
+	httpClient, err := getClient(cnf)
+	if err != nil {
+		return nil, err
 	}
-
-	httpClient := &http.Client{Transport: httpTransport, Timeout: time.Minute}
 
 	bot, err := tgbotapi.NewBotAPIWithClient(cnf.Telegram.Token, httpClient)
 	if err != nil {
@@ -84,6 +79,42 @@ func newTg() (*instanceObj, error) {
 	}
 
 	return inst, nil
+}
+
+func getClient(cnf *instanceConf) (*http.Client, error) {
+	httpTransport := &http.Transport{}
+
+	if cnf.Telegram.Proxy != "" {
+		dialer, err := proxy.SOCKS5("tcp", cnf.Telegram.Proxy, nil, proxy.Direct)
+		if err != nil {
+			return nil, err
+		}
+
+		httpTransport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+			done := make(chan bool)
+
+			var (
+				con net.Conn
+				err error
+			)
+
+			go func() {
+				con, err = dialer.Dial(network, addr)
+				done <- true
+			}()
+
+			select {
+			case <-ctx.Done():
+				return nil, errors.New("dial timeout")
+			case <-done:
+				return con, err
+			}
+		}
+	}
+
+	httpClient := &http.Client{Transport: httpTransport, Timeout: time.Minute}
+
+	return httpClient, nil
 }
 
 func (o *instanceObj) start() error {
@@ -123,7 +154,7 @@ func (o *instanceObj) start() error {
 func (o *instanceObj) stop() error {
 	_ = o.log.Sync()
 
-	if err := o.srv.Shutdown(nil); err != nil {
+	if err := o.srv.Shutdown(context.TODO()); err != nil {
 		return err
 	}
 
@@ -131,11 +162,12 @@ func (o *instanceObj) stop() error {
 }
 
 func (o *instanceObj) process(msg tgbotapi.Update) error {
-	if msg.Message != nil {
+	switch {
+	case msg.Message != nil:
 		return o.processMessage(msg.Message)
-	} else if msg.InlineQuery != nil {
+	case msg.InlineQuery != nil:
 		return o.processInline(msg.InlineQuery)
-	} else if msg.CallbackQuery != nil {
+	case msg.CallbackQuery != nil:
 		return o.processCallback(msg.CallbackQuery)
 	}
 
@@ -144,7 +176,10 @@ func (o *instanceObj) process(msg tgbotapi.Update) error {
 
 func (o *instanceObj) processMessage(msg *tgbotapi.Message) error {
 	if msg.Command() == "start" {
-		repl := tgbotapi.NewMessage(msg.Chat.ID, "Use this bot in inline mode: @pickmebot in any chat, even in this or send me message directly.")
+		repl := tgbotapi.NewMessage(
+			msg.Chat.ID,
+			"Use this bot in inline mode: @pickmebot in any chat, even in this or send me message directly.",
+		)
 
 		_, err := o.bot.Send(repl)
 		if err != nil {
@@ -164,11 +199,13 @@ func (o *instanceObj) processMessage(msg *tgbotapi.Message) error {
 
 	// SliceTricks
 	batchSize := maxButtons
+
 	var batches [][]string
 
 	for batchSize < len(items) {
 		items, batches = items[batchSize:], append(batches, items[0:batchSize:batchSize])
 	}
+
 	batches = append(batches, items)
 
 	for _, b := range batches {
