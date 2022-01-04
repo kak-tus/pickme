@@ -1,8 +1,0 @@
-pickme:
-  listen: '0.0.0.0:8080'
-  redisAddrs: '${PICKME_REDIS_ADDRS}'
-  telegram:
-    token: '${PICKME_TELEGRAM_TOKEN}'
-    url: '${PICKME_TELEGRAM_URL}'
-    path: '${PICKME_TELEGRAM_PATH}'
-    proxy: '${PICKME_TELEGRAM_PROXY}'

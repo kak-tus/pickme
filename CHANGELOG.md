@@ -1,5 +1,7 @@
 Unreleased
   - Remove vendoring.
+  - Switch to full env config.
+  - Config env changed from PICKME_REDIS_ADDRS to PICKME_REDISADDRS.
 
 2019-09-22 v0.1.4
   - Bugfix with generating identical ids for different lists.

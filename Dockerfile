@@ -11,7 +11,6 @@ RUN go build -o /go/bin/pickme
 FROM alpine:3.15
 
 COPY --from=build /go/bin/pickme /usr/local/bin/pickme
-COPY etc /etc/
 
 RUN \
   adduser -DH user \
@@ -22,7 +21,7 @@ RUN \
 USER user
 
 ENV \
-  PICKME_REDIS_ADDRS= \
+  PICKME_REDISADDRS= \
   PICKME_TELEGRAM_PATH= \
   PICKME_TELEGRAM_PROXY= \
   PICKME_TELEGRAM_TOKEN= \

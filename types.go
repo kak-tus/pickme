@@ -10,19 +10,6 @@ import (
 	"go.uber.org/zap"
 )
 
-type tgConf struct {
-	Path  string
-	Proxy string
-	Token string
-	URL   string
-}
-
-type instanceConf struct {
-	Listen     string
-	RedisAddrs string
-	Telegram   tgConf
-}
-
 type instanceObj struct {
 	bot *tgbotapi.BotAPI
 	cnf *instanceConf
