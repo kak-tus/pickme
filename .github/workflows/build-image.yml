@@ -33,3 +33,11 @@ jobs:
         uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      - name: Setup ko
+        uses: imjasonh/setup-ko@v0.4
+        with:
+          version: v0.9.3
+
+      - name: Build
+        run: ko publish --tags $BUILD_TAG ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
