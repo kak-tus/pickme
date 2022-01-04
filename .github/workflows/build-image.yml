@@ -27,12 +27,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract Docker metadata
-        id: meta
-        uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-
       - name: Setup ko
         uses: imjasonh/setup-ko@v0.4
         with:
@@ -40,6 +34,5 @@ jobs:
 
       - name: Build
         run: |
-          env
           export KO_DOCKER_REPO="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
-          ko publish --tags $BUILD_TAG .
+          ko publish --tags $GITHUB_REF_NAME .
