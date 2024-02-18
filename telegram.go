@@ -264,7 +264,7 @@ func (o *instanceObj) processInline(ctx context.Context, msg *tgbotapi.InlineQue
 		repl.ReplyMarkup = kb
 	}
 
-	_, err := o.bot.Send(tgbotapi.InlineConfig{
+	_, err := o.bot.Request(tgbotapi.InlineConfig{
 		InlineQueryID: msg.ID,
 		IsPersonal:    true,
 		Results:       []any{repl},
