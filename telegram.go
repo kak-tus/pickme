@@ -258,7 +258,7 @@ func (o *instanceObj) processInline(ctx context.Context, msg *tgbotapi.InlineQue
 	if len(items) != 0 {
 		kb, err := o.formAndStoreKB(ctx, stored{Items: items})
 		if err != nil {
-			return err
+			return errors.Wrap(err, "form kb fail")
 		}
 
 		repl.ReplyMarkup = kb
@@ -270,7 +270,7 @@ func (o *instanceObj) processInline(ctx context.Context, msg *tgbotapi.InlineQue
 		Results:       []any{repl},
 	})
 	if err != nil {
-		return err
+		return errors.Wrap(err, "send reply fail")
 	}
 
 	return nil
