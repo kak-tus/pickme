@@ -356,7 +356,7 @@ func (o *instanceObj) processCallback(ctx context.Context, msg *tgbotapi.Callbac
 		repl.ReplyMarkup = kb
 	}
 
-	_, err = o.bot.Send(repl)
+	_, err = o.bot.Request(repl)
 	if err != nil {
 		return errors.Wrap(err, "send fail")
 	}
