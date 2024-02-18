@@ -299,7 +299,7 @@ func (o *instanceObj) processCallback(ctx context.Context, msg *tgbotapi.Callbac
 
 		_, err := o.bot.Send(repl)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "send fail")
 		}
 
 		return nil
@@ -349,7 +349,7 @@ func (o *instanceObj) processCallback(ctx context.Context, msg *tgbotapi.Callbac
 
 	kb, err := o.formAndStoreKB(ctx, *st)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "store fail")
 	}
 
 	if kb != nil {
@@ -358,7 +358,7 @@ func (o *instanceObj) processCallback(ctx context.Context, msg *tgbotapi.Callbac
 
 	_, err = o.bot.Send(repl)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "send fail")
 	}
 
 	return nil
