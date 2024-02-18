@@ -1,3 +1,6 @@
+2024-02-18 v0.2.3
+  - Try fix process error.
+
 2022-01-04 v0.2.1, v0.2.2
   - Test build and publish on github container registry.
 

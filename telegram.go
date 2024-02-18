@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math/rand"
 	"net"
@@ -13,6 +12,8 @@ import (
 	"github.com/go-redis/redis/v8"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	jsoniter "github.com/json-iterator/go"
+	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	regen "github.com/zach-klippenstein/goregen"
 	"go.uber.org/zap"
 	"golang.org/x/net/proxy"
@@ -23,7 +24,7 @@ import (
 // May be it limited by message size, not by buttons count?
 const maxButtons = 50
 
-func newTg() (*instanceObj, error) {
+func newTg(log zerolog.Logger) (*instanceObj, error) {
 	cnf, err := newConf()
 	if err != nil {
 		return nil, err
@@ -39,12 +40,12 @@ func newTg() (*instanceObj, error) {
 
 	rdb := redis.NewClusterClient(ropt)
 
-	logger, err := zap.NewProduction()
+	loggerOld, err := zap.NewProduction()
 	if err != nil {
 		return nil, err
 	}
 
-	log := logger.Sugar()
+	logOld := loggerOld.Sugar()
 
 	httpClient, err := getClient(cnf)
 	if err != nil {
@@ -71,13 +72,14 @@ func newTg() (*instanceObj, error) {
 	}
 
 	inst := &instanceObj{
-		bot: bot,
-		cnf: cnf,
-		enc: enc,
-		gen: gen,
-		log: log,
-		rdb: rdb,
-		srv: srv,
+		bot:    bot,
+		cnf:    cnf,
+		enc:    enc,
+		gen:    gen,
+		log:    log,
+		logOld: logOld,
+		rdb:    rdb,
+		srv:    srv,
 	}
 
 	return inst, nil
@@ -130,12 +132,12 @@ func (o *instanceObj) start() error {
 		return err
 	}
 
-	o.log.Info(resp.Description)
+	o.logOld.Info(resp.Description)
 
 	updates := o.bot.ListenForWebhook("/" + o.cnf.Telegram.Path)
 
 	http.HandleFunc("/healthcheck", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "ok")
+		_, _ = fmt.Fprint(w, "ok")
 	})
 
 	go func() {
@@ -146,7 +148,7 @@ func (o *instanceObj) start() error {
 				ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 
 				if err := o.process(ctx, msg); err != nil {
-					o.log.Error(err)
+					o.log.Error().Err(err).Msg("process fail")
 				}
 
 				cancel()
@@ -163,7 +165,7 @@ func (o *instanceObj) start() error {
 }
 
 func (o *instanceObj) stop() error {
-	_ = o.log.Sync()
+	_ = o.logOld.Sync()
 
 	if err := o.srv.Shutdown(context.TODO()); err != nil {
 		return err
@@ -175,11 +177,17 @@ func (o *instanceObj) stop() error {
 func (o *instanceObj) process(ctx context.Context, msg tgbotapi.Update) error {
 	switch {
 	case msg.Message != nil:
-		return o.processMessage(ctx, msg.Message)
+		if err := o.processMessage(ctx, msg.Message); err != nil {
+			return errors.Wrap(err, "message process fail")
+		}
 	case msg.InlineQuery != nil:
-		return o.processInline(ctx, msg.InlineQuery)
+		if err := o.processInline(ctx, msg.InlineQuery); err != nil {
+			return errors.Wrap(err, "inline process fail")
+		}
 	case msg.CallbackQuery != nil:
-		return o.processCallback(ctx, msg.CallbackQuery)
+		if err := o.processCallback(ctx, msg.CallbackQuery); err != nil {
+			return errors.Wrap(err, "callback process fail")
+		}
 	}
 
 	return nil
@@ -259,7 +267,7 @@ func (o *instanceObj) processInline(ctx context.Context, msg *tgbotapi.InlineQue
 	_, err := o.bot.Send(tgbotapi.InlineConfig{
 		InlineQueryID: msg.ID,
 		IsPersonal:    true,
-		Results:       []interface{}{repl},
+		Results:       []any{repl},
 	})
 	if err != nil {
 		return err

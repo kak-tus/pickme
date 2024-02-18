@@ -8,8 +8,8 @@ import (
 )
 
 func TestNewConf(t *testing.T) {
-	os.Setenv("PICKME_REDISADDRS", "1")
-	os.Setenv("PICKME_TELEGRAM_PATH", "2")
+	_ = os.Setenv("PICKME_REDISADDRS", "1")
+	_ = os.Setenv("PICKME_TELEGRAM_PATH", "2")
 
 	cnf, err := newConf()
 	require.NoError(t, err)

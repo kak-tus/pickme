@@ -5,6 +5,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/rs/zerolog"
 	"go.uber.org/zap"
 )
 
@@ -14,16 +15,18 @@ func main() {
 		panic(err)
 	}
 
-	log := logger.Sugar()
+	logOld := logger.Sugar()
 
-	tg, err := newTg()
+	log := zerolog.New(os.Stdout).With().Timestamp().Caller().Logger()
+
+	tg, err := newTg(log)
 	if err != nil {
-		log.Panic(err)
+		logOld.Panic(err)
 	}
 
 	go func() {
 		if err := tg.start(); err != nil {
-			log.Panic(err)
+			logOld.Panic(err)
 		}
 	}()
 
@@ -32,11 +35,11 @@ func main() {
 
 	<-sigs
 
-	log.Info("Stop")
+	logOld.Info("Stop")
 
 	if err := tg.stop(); err != nil {
-		log.Panic(err)
+		logOld.Panic(err)
 	}
 
-	_ = log.Sync()
+	_ = logOld.Sync()
 }
